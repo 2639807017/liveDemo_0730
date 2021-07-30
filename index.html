@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://netdna.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+    <title>Document</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <section class="section-center">
+        <!-- form -->
+        <form class="grocery-form">
+            <p class="alert"></p>
+            <h3>grocery bud</h3>
+            <div class="form-control">
+                <input type="text" id="grocery" placeholder="e.g. eggs">
+                <button type="submit" class="submit-btn">
+                    submit
+                </button>
+            </div>
+        </form>
+        <!-- list -->
+        <div class="grocery-container">
+            <div class="grocery-list">
+                
+            </div>
+            <!-- btn -->
+            <button type="button" class="clear-btn">clear items</button>
+        </div>
+    </section>
+
+    <!-- javascript -->
+    <script>
+        // ********SELECT ITEMS********
+        const alert = document.querySelector(".alert");
+        const form = document.querySelector(".grocery-form");
+        const grocery = document.getElementById("grocery");
+        const submitBtn = document.querySelector(".submit-btn");
+        const container = document.querySelector(".grocery-container");
+        const list = document.querySelector(".grocery-list");
+        const clearBtn = document.querySelector(".clear-btn");
+
+
+        // edit option
+        let editElement;
+        let editFlag = false;
+        let editID = "";
+        // *******EVENT LISTENERS*******
+        // submit form
+        form.addEventListener("submit", addItem);
+        // clear items
+        clearBtn.addEventListener("click", clearItems);
+        // load items
+        window.addEventListener("DOMContentLoaded", setupItems);
+        // *******FUNCTIONS********
+        function addItem(e){
+            e.preventDefault();
+            const value = grocery.value;/*将输入框的值赋值给value*/
+            const id = new Date().getTime().toString();
+            if(value && !editFlag){
+                createListItem(id, value);
+                // display Alert
+                displayAlert("item added to the list", "success");
+                // show container
+                container.classList.add("show-container");
+                // add to local storage
+                addToLocalStorage(id, value);
+                // set back to default
+                setBackToDefault();
+            }else if(value && editFlag){/*此时value的值为用户输入的值*/
+                // console.log('editing');
+                editElement.innerHTML = value;
+                displayAlert("value changed","success");
+                // edit local storage
+                editLocalStorage(editID,value);
+                setBackToDefault();
+            }else{
+                // console.log('empty value');
+                displayAlert("pleasse enter value", "danger");
+            }
+        }
+        // display alert
+        function displayAlert(text,action){
+            alert.textContent = text;
+            alert.classList.add(`alert-${action}`);
+        
+            // remove alert  间隔一秒钟就清除alert中的内容并移除添加的class
+            setTimeout(function(){
+                alert.textContent = "";
+                alert.classList.remove(`alert-${action}`);
+            },1000);
+        }
+
+        // clear item
+        function clearItems(){
+            const items = document.querySelectorAll(".grocery-item");
+
+            if(items.length > 0){
+                items.forEach(function(item){
+                    list.removeChild(item);
+                });
+            }
+            container.classList.remove("show-container");
+            displayAlert("empty list", "danger");
+            setBackToDefault();
+            localStorage.removeItem("list");
+        }
+
+        // delete function
+        function deleteItem(e){
+            // console.log("delete");
+            const element = e.currentTarget.parentElement.parentElement;
+            const id = element.dataset.id;
+            list.removeChild(element);
+            if(list.children.length === 0){
+                container.classList.remove("show-container");
+            }
+            displayAlert("item removed","danger");
+            // remove form local storage
+            // removeFormLocalStorage(id)
+        }
+        // edit function
+        function editItem(e){/*点击edit按钮后触发的回调函数*/
+            const element = e.currentTarget.parentElement.parentElement;
+            // set edit item
+            editElement = e.currentTarget.parentElement.previousElementSibling;/*找到那个装用户输入文本的p标签*/
+            // console.log(editElement);
+            grocery.value = editElement.innerHTML;
+            editFlag = true;
+            editID = element.dataset.id;
+            submitBtn.textContent = "edit";
+        }
+        // set back to dufault
+        function setBackToDefault(){
+            // console.log("set");
+            grocery.value = "";
+            editFlag = false;
+            editID = "";
+            submitBtn.textContent = "submit";
+        }
+        // *******LOCAL STORAGE*******
+        function addToLocalStorage(id, value){
+            // console.log("add");
+            const grocery = {id,
+                value};
+            let items = getLocalStorage();
+            console.log(items);
+            items.push(grocery);
+            localStorage.setItem("list", JSON.stringify(items));
+        }
+        function removeFromLocalStorage(id){
+            let items = getLocalStorage();
+
+            items = items.filter(function (item){
+                if(item.id !== id){
+                    return item;
+                }
+            });
+            localStorage.setItem("list", JSON.stringify(items));
+        }
+        function editLocalStorage(id,value){
+            let items = getLocalStorage();
+            items = items.map(function(item){/*当点击edit按钮后，将数据同步到storage上*/
+                if(item.id === id){
+                    item.value = value;
+                }
+                return item;
+            });
+            localStorage.setItem("list", JSON.stringify(items));
+        }
+        function getLocalStorage(){/*最开始localStorage.getItem()返回的值是null，所以回调函数返回一个空数组*/
+            return localStorage.getItem("list") ? JSON.parse(localStorage.getItem("list")) : [];
+        }
+        // localStorage API 存储的数据将保存在浏览器会话中（课长期保存）
+        // setItem 增加数据项
+        // getItem 读取数据项
+        // removeItem 移除数据项
+        // save as strings
+        // *******SETUP ITEMS*******
+        function setupItems(){
+            let items = getLocalStorage();
+            if(items.length > 0){
+                items.forEach(function(item){
+                    createListItem(item.id, item.value)
+                });
+                container.classList.add("show-container");
+            }
+        }
+        
+        function createListItem(id,value){
+            const element = document.createElement("article");
+                // add id
+                const attr = document.createAttribute("data-id");
+                attr.value = id;/*将上面id的值设置给 data-id */
+                element.setAttributeNode(attr);/*为element添加attr属性节点*/
+                // add class
+                element.classList.add("grocery-item");
+                // 设置element的内容，使得用户输入的内容显示在list中，且输入内容从上往下排列，因为element的innerHTML内容是依次增加，先增加先显示
+                element.innerHTML = `<p class="title">${value}</p>
+                    <div class="btn-container">
+                        <button class="edit-btn" type="button">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button class="delete-btn" type="button">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>`;
+                // add event listeners to both buttons;
+                const deleteBtn = element.querySelector(".delete-btn");
+                const editBtn = element.querySelector(".edit-btn");
+                deleteBtn.addEventListener("click",deleteItem);
+                editBtn.addEventListener("click",editItem);
+                // append child
+                list.appendChild(element);
+        }
+    </script>
+</body>
+</html>
